@@ -1,0 +1,2 @@
+id,make,model,price,mileage_km,production_year,fuel_category,body_type,transmission,had_accident
+001c08bb-96f9-4198-a2c9-39bcab088a08,Suzuki,Swift,22950.0,"10,500 km",,Gasoline,Compact,Manual,False

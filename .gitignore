@@ -1,3 +1,6 @@
+# database files
+data/autoscout24_dataset_20251108.csv
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
