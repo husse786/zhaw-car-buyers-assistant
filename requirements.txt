@@ -21,3 +21,7 @@ openai
 
 # environment variables
 dotenv
+
+# web app
+gradio
+pillow
