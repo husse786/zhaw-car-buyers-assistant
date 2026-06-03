@@ -1,6 +1,11 @@
 # database files
 data/autoscout24_dataset_20251108.csv
-
+data/autoscout_clean.csv
+data/split_train_idx.csv
+data/split_val_idx.csv
+data/split_test_idx.csv
+data/split_train_idx.csv
+data/split_val_idx.csv
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
