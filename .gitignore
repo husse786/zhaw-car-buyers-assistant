@@ -10,6 +10,8 @@ data/split_val_idx.csv
 # Model files
 models/car-damage-vit/
 
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
