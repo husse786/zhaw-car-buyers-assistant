@@ -270,9 +270,9 @@ def analyze(listing_text, persona, image):
 
 # ── Gradio UI ──
 EXAMPLES = [
-    ["VW Golf 1.6 TDI, Baujahr 2016, 120'000 km, 110 PS, Diesel, manuell, Kombi.", "first_time", None],
-    ["Audi A4 Avant, 2019, 78000 km, 190 hp, petrol, automatic.", "budget", None],
-    ["Toyota Yaris hybrid 2020, 45'000 km, one owner, great condition.", "expat", None],
+    ["VW Golf 1.6 TDI, Baujahr 2016, 120'000 km, 110 PS, Diesel, manuell, Kombi.", "first_time", "example_inputs/example_minor.JPEG"],
+    ["Audi A4 Avant, 2019, 78000 km, 190 hp, petrol, automatic.", "budget", "example_inputs/example_moderate.JPEG"],
+    ["Toyota Yaris hybrid 2020, 45'000 km, one owner, great condition.", "expat", "example_inputs/example_severe.JPEG"],
 ]
 
 with gr.Blocks(title="Used-Car Buyer's Assistant") as demo:
