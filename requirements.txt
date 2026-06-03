@@ -15,3 +15,9 @@ scikit-learn
 # visualization
 matplotlib
 seaborn
+
+#ai modells
+openai
+
+# environment variables
+dotenv
