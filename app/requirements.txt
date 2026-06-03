@@ -1,0 +1,27 @@
+#data handling and analysis
+datasets
+pandas
+numpy
+
+#model persistence
+joblib
+
+#machine learning 
+torch
+torchvision
+transformers
+scikit-learn
+
+# visualization
+matplotlib
+seaborn
+
+#ai modells
+openai
+
+# environment variables
+python-dotenv
+
+# web app
+gradio
+pillow
