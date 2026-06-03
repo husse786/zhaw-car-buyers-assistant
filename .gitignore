@@ -6,6 +6,10 @@ data/split_val_idx.csv
 data/split_test_idx.csv
 data/split_train_idx.csv
 data/split_val_idx.csv
+
+# Model files
+models/car-damage-vit/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
