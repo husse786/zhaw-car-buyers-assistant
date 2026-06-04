@@ -29,7 +29,7 @@ Reference to multiple lines in `train.py`, lines 15-38:
 - Student: Seyid Hussein Husseini
 - GitHub repository URL: <https://github.com/husse786/zhaw-car-buyers-assistant>
 - Deployment URL: <https://huggingface.co/spaces/hussesey/zhaw-aiapp-used-car-assistant>
-- Submission date: 05.06.2026
+- Submission date: 04.06.2026
 
 ### Mandatory Setup Checks
 
@@ -51,7 +51,7 @@ Primary blocks used for core solution (choose 2):
 
 If a third block is selected, it is documented and graded separately as extra work.
 
-- Third block :Computer Vision, classifies visible damage severity, which adjusts the price estimate.
+- Third block: Computer Vision, classifies visible damage severity, which adjusts the price estimate.
 
 Guidance hint: Keep the project idea short and consistent. Focus most details on the selected blocks.
 Evidence hint: Show where each selected block contributes to the final system.
@@ -120,7 +120,7 @@ Restricted to a single currency (EUR) and a plausible price range (€500–€1
 
 | Iteration | Objective | Key changes | Models used | Main metric | Change vs previous |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Establish a baseline | Linear model on encoded features; `log1p` target | Ridge | Test R² −0.44; RMSE €38,858; MAE €10,333 | — (reference) |
+| 1 | Establish a baseline | Linear model on encoded features; `log1p` target | Ridge | Test R² −0.44; RMSE €38,858; MAE €10,333 | - (reference) |
 | 2 | Capture non-linear feature interactions | Switched to a bagging tree ensemble | Random Forest | Test R² 0.932; RMSE €8,418; MAE €4,863 | Large gain over baseline (R² −0.44 -> 0.932) |
 | 3 | Reduce bias further | Switched to gradient boosting (sequential residual fitting) | HistGradientBoosting | Test R² 0.946; RMSE €7,604; MAE €4,651 | Best result; selected model (RMSE €8,418 -> €7,604) |
 
@@ -131,10 +131,10 @@ Restricted to a single currency (EUR) and a plausible price range (€500–€1
 - Error patterns and likely causes:
   - Highest percentage error on cheap cars (<€5k): approx. 41% MAPE, because small absolute errors are large relative to a low price, and budget listings have noisier pricing.
   - Largest absolute errors on high-end cars (>€60k): fewer training examples at the top of the range and luxury premiums that are hard to learn from specifications alone.
-  - Error rises with car age: from approx.8.9% MAPE for 0–3 year-old cars to approx. 32% for cars over 20 years, where rarity and condition (not captured in the data) drive price.
+  - Error rises with car age: from approx. 8.9% MAPE for 0–3 year-old cars to approx. 32% for cars over 20 years, where rarity and condition (not captured in the data) drive price.
   - Electric/hybrid and rare fuel types (e.g. LPG) are less accurate, reflecting volatile and feature-dependent pricing not fully represented in the specifications.
   
-  See Error Analysis in [`02_ml_price_model.ipynb`](notebooks/02_ml_price_model.ipynb#5-error-analysis).
+  *See Error Analysis* in [`02_ml_price_model.ipynb`](notebooks/02_ml_price_model.ipynb#5-error-analysis).
 
 #### 2A.6 Integration with Other Block(s)
 
@@ -152,12 +152,12 @@ List every usage of a data source as a separate entry. If the same source is use
 
 | Entry | Source name or link | Type | Size | Role in this block |
 | --- | --- | --- | --- | --- |
-| 1 | `carknowledge.md` — curated used-car buying knowledge base, compiled from public car-buying websites (e.g. Carwow and similar guides) | Text (Markdown) | ~23,750 characters; 11 concept sections | Knowledge base for retrieval-augmented generation (RAG): grounds the explanation in verified car-buying facts |
+| 1 | `carknowledge.md` - curated used-car buying knowledge base, compiled from public car-buying websites (e.g. Carwow and similar guides) | Text (Markdown) | ~23,750 characters; 11 concept sections | Knowledge base for retrieval-augmented generation (RAG): grounds the explanation in verified car-buying facts |
 | 2 | User free-text car listing (runtime input) | Text (user input) | One short text per request | Source text from which the LLM extracts structured specifications |
 
 #### 2B.2 Preprocessing and Prompt Design
 
-- Text preprocessing: The knowledge base is split into concept-level chunks by section heading, so each chunk is one self-contained topic (e.g. mileage, vehicle history report, frame damage), producing 11 chunks. Each chunk is embedded once with the OpenAI `text-embedding-3-small` model (1536-dimensional vectors) and stored in memory at startup. At query time, a query is embedded and the most relevant chunks are retrieved by cosine similarity (top-k = 3). See *Stage C — RAG* in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-c--grounded-explanation-with-retrieval-augmented-generation-ra).
+- Text preprocessing: The knowledge base is split into concept-level chunks by section heading, so each chunk is one self-contained topic (e.g. mileage, vehicle history report, frame damage), producing 11 chunks. Each chunk is embedded once with the OpenAI `text-embedding-3-small` model (1536-dimensional vectors) and stored in memory at startup. At query time, a query is embedded and the most relevant chunks are retrieved by cosine similarity (top-k = 3). See *Stage C - RAG* in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-c--grounded-explanation-with-retrieval-augmented-generation-ra).
 
 - Prompt design or retrieval setup: Two LLM prompts are used.
   - Extraction prompt (`temperature = 0` for consistency): a system instruction asks for strict JSON with a fixed set of keys, requires numeric values for numeric fields, constrains categorical fields (fuel, transmission, body type) to the exact vocabulary the price model was trained on, and returns `null` for values not stated rather than guessing. One worked example is included to anchor the format.
@@ -167,17 +167,17 @@ List every usage of a data source as a separate entry. If the same source is use
 #### 2B.3 Approach Selection
 
 - Approach used (classical NLP, transformer, RAG, prompt engineering): A combination of prompt engineering and retrieval-augmented generation (RAG). Prompt engineering drives two LLM calls: structured spec extraction (strict JSON, constrained vocabulary) and a persona-adapted explanation. RAG augments the explanation by retrieving relevant chunks from the curated knowledge base and injecting them into the prompt, so advice is grounded in verified car-buying facts rather than the model's internal knowledge alone.
-- Alternatives considered: A prompt-only explanation (no retrieval) was implemented first and kept as the comparison baseline; RAG was then layered on top to reduce vague or unsupported claims. A fully local stack (open-source LLM with a vector database such as FAISS) was considered but not chosen: OpenAI embeddings with in-memory cosine similarity were sufficient for a small knowledge base (11 chunks) and kept the deployment lightweight. See *Stage C — RAG* and the prompt-only vs. RAG comparison in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-c-evaluation--prompt-only-vs-rag-grounded-explanation).
+- Alternatives considered: A prompt-only explanation (no retrieval) was implemented first and kept as the comparison baseline; RAG was then layered on top to reduce vague or unsupported claims. A fully local stack (open-source LLM with a vector database such as FAISS) was considered but not chosen: OpenAI embeddings with in-memory cosine similarity were sufficient for a small knowledge base (11 chunks) and kept the deployment lightweight. See *Stage C - RAG* and the prompt-only vs. RAG comparison in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-c-evaluation--prompt-only-vs-rag-grounded-explanation).
 
 #### 2B.4 Comparison and Iterations
 
 | Iteration | Objective | Key changes | Model or prompt setup | Main metric or qualitative check | Change vs previous |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Reliable spec extraction | Extraction prompt returning strict JSON | LLM, `temperature = 0`, one worked example | Valid JSON returned; but categorical values echoed the listing's wording (e.g. "petrol", "automatic"), risking mismatch with the price model's vocabulary | — (initial) |
+| 1 | Reliable spec extraction | Extraction prompt returning strict JSON | LLM, `temperature = 0`, one worked example | Valid JSON returned; but categorical values echoed the listing's wording (e.g. "petrol", "automatic"), risking mismatch with the price model's vocabulary | - (initial) |
 | 2 | Prevent encoding mismatch | Constrained categorical outputs to the price model's exact training vocabulary; `null` for unstated values | Same call with an updated system prompt | Categorical values now standardised (e.g. "petrol" → "Gasoline"); unstated fields correctly returned as `null` | Eliminated silent feature-mismatch at the ML interface |
 | 3 | Ground the explanation in verified facts | Added RAG: retrieve top-3 knowledge chunks and inject into the explanation prompt | Explanation prompt + retrieval (cosine similarity) | Qualitative: RAG version referenced verified concepts (pre-purchase inspection, history check, mileage wear) absent from the prompt-only version | More grounded, source-backed advice vs. prompt-only |
 
-See the prompt-only vs. RAG comparison in *Stage C — Evaluation* in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-c-evaluation--prompt-only-vs-rag-grounded-explanation).
+See the prompt-only vs. RAG comparison in *Stage C - Evaluation* in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-c-evaluation--prompt-only-vs-rag-grounded-explanation).
 
 #### 2B.5 Evaluation and Error Analysis
 
@@ -188,12 +188,12 @@ See the prompt-only vs. RAG comparison in *Stage C — Evaluation* in [`04_nlp_r
   - Retrieval precision is moderate: for some queries the top-3 chunks include a loosely related section (e.g. lemon laws), because the knowledge base is small and several concepts overlap. The most relevant chunk is still retrieved, so the grounded answer remains accurate, but retrieval is not always tightly focused.
   - Persona differentiation is real but moderate: explanations share a similar opening and uncertainty-note structure across personas, with the main variation in focus and sentence complexity.
   
-  See *Stage A — Extract*, *Stage B — Explain*, and *Stage C — Evaluation* in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-c-evaluation).
+  See *Stage A - Extract*, *Stage B - Explain*, and *Stage C - Evaluation* in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-c-evaluation).
 
 #### 2B.6 Integration with Other Block(s)
 
 - Inputs received from other block(s): The base price estimate (EUR) from the ML block, and the damage severity label (minor / moderate / severe) from the Computer Vision block when a photo is provided. The block also receives the user's free-text listing and chosen persona directly.
-- Outputs provided to other block(s): Structured specifications (as JSON) that feed the ML price model, and the final natural-language explanation shown to the user — combining the specs, the predicted price, the damage adjustment, and retrieved knowledge.
+- Outputs provided to other block(s): Structured specifications (as JSON) that feed the ML price model, and the final natural-language explanation shown to the user - combining the specs, the predicted price, the damage adjustment, and retrieved knowledge.
 - Representative output (Audi A4 Avant, 2019, 78,000 km, petrol, automatic; minor damage photo; first-time-buyer persona):
   - Extracted specs → `{"make": "Audi", "model": "A4 Avant", "production_year": 2019, "mileage_km": 78000, "power_hp": 190, "fuel_category": "Gasoline", "transmission": "Automatic", "body_type": "Station wagon"}`
   - Base price €25,282 → minor-damage adjustment −7% → adjusted €23,513
@@ -226,9 +226,9 @@ See *Image processor + augmentation* in [`03_cv_damage_model.ipynb`](notebooks/0
 
 | Iteration | Objective | Key changes | Model(s) used | Main metric | Change vs previous |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Fine-tune a damage-severity classifier on a small dataset | Transfer learning: frozen ViT backbone, new 3-class head; damage-safe augmentation; 8 epochs; best epoch selected by macro-F1 | ViT (`google/vit-base-patch16-224`) | Validation accuracy 0.734, macro-F1 0.720 (best epoch); test accuracy 0.685, macro-F1 0.682 | — (single configuration) |
+| 1 | Fine-tune a damage-severity classifier on a small dataset | Transfer learning: frozen ViT backbone, new 3-class head; damage-safe augmentation; 8 epochs; best epoch selected by macro-F1 | ViT (`google/vit-base-patch16-224`) | Validation accuracy 0.734, macro-F1 0.720 (best epoch); test accuracy 0.685, macro-F1 0.682 | - (single configuration) |
 
-Note: A single model configuration was used for this block. Validation accuracy/F1 improved over the first epochs (≈0.67 → ≈0.73) and then plateaued, indicating convergence; the best epoch by macro-F1 was retained. A zero-shot baseline (e.g. CLIP) was considered as a comparison but not implemented, to keep block focused.
+Note: A single model configuration was used for this block. Validation accuracy/F1 improved over the first epochs (≈0.67 → ≈0.73) and then plateaued, indicating convergence; the best epoch by macro-F1 was retained. A zero-shot baseline (e.g. CLIP) was considered as a comparison but not implemented, to keep the block focused.
 See the training and evaluation cells in [`03_cv_damage_model.ipynb`](notebooks/03_cv_damage_model.ipynb).
 
 #### 2C.5 Evaluation and Error Analysis
@@ -236,7 +236,7 @@ See the training and evaluation cells in [`03_cv_damage_model.ipynb`](notebooks/
 - Metrics and/or visual checks: Accuracy and macro-averaged precision, recall, and F1 (macro so each class counts equally), plus a confusion matrix and a per-class report on the held-out test set (124 images, evaluated once). Macro-averaging was chosen so the model cannot look good by only handling the easiest class well.
 - Final results: Accuracy 0.685, macro-F1 0.682. Per-class F1: minor 0.744, moderate 0.525, severe 0.778. Severe damage was detected most reliably (recall 0.81) and minor reasonably well (0.74); the middle "moderate" class was the weakest (F1 0.525).
 - Error patterns and limitations:
-  - The "moderate" class is the hardest, confused in both directions (toward minor and toward severe) — expected, since "moderate" is the fuzzy middle of a subjective severity scale where even human labels disagree.
+  - The "moderate" class is the hardest, confused in both directions (toward minor and toward severe) - expected, since "moderate" is the fuzzy middle of a subjective severity scale where even human labels disagree.
   - Errors are almost entirely between adjacent severity levels: in the confusion matrix only 1 image was misclassified minor→severe and 0 severe→minor. The model rarely makes a two-step ("catastrophic") error, indicating it has learned the underlying ordering of severity and mainly blurs the boundaries between neighbouring classes.
   - Limitation - class scope: the dataset contains only damaged cars (no "undamaged/good" class), so the model always assigns one of the three damage levels. A clean car is forced into the closest category (typically "minor"). This is surfaced honestly in the app, and predictions are shown with a confidence value so low-confidence outputs are visibly uncertain.
 
@@ -245,9 +245,9 @@ See the training and evaluation cells in [`03_cv_damage_model.ipynb`](notebooks/
 #### 2C.6 Integration with Other Block(s)
 
 - Inputs received from other block(s): None directly. The Computer Vision block takes the user's uploaded photo (an optional runtime input). It operates independently of the other blocks' outputs.
-- Outputs provided to other block(s): A damage-severity label (minor / moderate / severe) plus a confidence value. This output drives a rule-based price adjustment (decision logic) applied to the ML block's base price — minor −7%, moderate −20%, severe −40% — and is also passed to the NLP block, which mentions the damage and its effect in the explanation. If no photo is provided, no adjustment is applied.
+- Outputs provided to other block(s): A damage-severity label (minor / moderate / severe) plus a confidence value. This output drives a rule-based price adjustment (decision logic) applied to the ML block's base price - minor −7%, moderate −20%, severe −40% - and is also passed to the NLP block, which mentions the damage and its effect in the explanation. If no photo is provided, no adjustment is applied.
 - Concrete example (real prediction): for a base price of €25,282 with an uploaded damage photo classified as "minor" (confidence 46%), the adjustment of −7% produced an adjusted estimate of €23,513, and the explanation noted the minor-damage adjustment.
-- Observed failure case: the same photo was a genuinely severe-damage example that the model classified as "minor" with low confidence (46%) — consistent with the model's ~68% accuracy and the inherent difficulty of severity boundaries. Because the predicted confidence is shown to the user, such low-confidence outputs are visibly uncertain, and the modest minor-damage adjustment limits the impact of an occasional misclassification on the final estimate.
+- Observed failure case: the same photo was a genuinely severe-damage example that the model classified as "minor" with low confidence (46%) - consistent with the model's ~68% accuracy and the inherent difficulty of severity boundaries. Because the predicted confidence is shown to the user, such low-confidence outputs are visibly uncertain, and the modest minor-damage adjustment limits the impact of an occasional misclassification on the final estimate.
 
 The adjustment logic is implemented in the `apply_damage_adjustment` function and orchestrated in `analyze` in [`app.py`](app/app.py).
 
@@ -285,10 +285,10 @@ LLM_MODEL=gpt-5.4-mini
 
 - Data setup: Download the data sources (not committed to the repository): the AutoScout24 listings CSV (Kaggle) for the price model, the Car Damage Severity image dataset (Kaggle) for the vision model, and the `carknowledge.md` text file (included in `data/`). The trained price model (`models/price_model.pkl`) is produced by the ML notebook; the vision model is hosted on Hugging Face (`hussesey/zhaw-aiapp-vit-car-damage-severity`) and loaded at runtime.
 - Training command(s): Training is done offline in the notebooks (not in the app):
-  - `notebooks/01_eda_preprocessing.ipynb` — clean the AutoScout24 data and produce `data/autoscout_clean.csv`.
-  - `notebooks/02_ml_price_model.ipynb` — train and compare the price models; saves `models/price_model.pkl`.
-  - `notebooks/03_cv_damage_model.ipynb` — fine-tune the ViT damage classifier (run on a GPU, e.g. Lightning AI); the trained model is uploaded to Hugging Face.
-  - `notebooks/04_nlp_rag.ipynb` — develop and test the extraction, explanation, and RAG logic.
+  - `notebooks/01_eda_preprocessing.ipynb` - clean the AutoScout24 data and produce `data/autoscout_clean.csv`.
+  - `notebooks/02_ml_price_model.ipynb` - train and compare the price models; saves `models/price_model.pkl`.
+  - `notebooks/03_cv_damage_model.ipynb` - fine-tune the ViT damage classifier (run on a GPU, e.g. Lightning AI); the trained model is uploaded to Hugging Face.
+  - `notebooks/04_nlp_rag.ipynb` - develop and test the extraction, explanation, and RAG logic.
 - Inference/run command(s): Run the app locally from the `app/` folder:
 
 ```bash
@@ -324,4 +324,4 @@ Evidence for selected bonus items:
 
 - Ethics, bias, and fairness: The application presents estimates as guideline values, not binding valuations, and displays model confidence so uncertain predictions are visible. Honest limitations are surfaced throughout: the vision model is trained only on damaged cars (no "undamaged" class), the price model is trained on European listings (so other markets may differ), and the damage-to-price adjustment is illustrative business logic rather than a market-calibrated figure. The persona feature aims to make explanations accessible across different buyer backgrounds (first-time, budget-conscious, non-native speakers), reducing the information asymmetry the project addresses.
 
-- Creative or exceptional use case: The project targets a real, relatable problem — helping non-expert buyers judge whether a used-car listing is fairly priced and understand what the specifications mean — by chaining three AI blocks (image → severity, text → specs → price, knowledge → explanation) into one decision-support tool.
+- Creative or exceptional use case: The project targets a real, relatable problem - helping non-expert buyers judge whether a used-car listing is fairly priced and understand what the specifications mean - by chaining three AI blocks (image → severity, text → specs → price, knowledge → explanation) into one decision-support tool.
