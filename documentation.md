@@ -198,11 +198,8 @@ See the prompt-only vs. RAG comparison in *Stage C — Evaluation* in [`04_nlp_r
   - Extracted specs → `{"make": "Audi", "model": "A4 Avant", "production_year": 2019, "mileage_km": 78000, "power_hp": 190, "fuel_category": "Gasoline", "transmission": "Automatic", "body_type": "Station wagon"}`
   - Base price €25,282 → minor-damage adjustment −7% → adjusted €23,513
   - Explanation (excerpt): states the adjusted price, explains that 78,000 km mileage indicates moderate wear that reduces value, notes the minor-damage adjustment, and closes with an uncertainty note about service history and hidden issues.
-  
-  The full pipeline is orchestrated in the `analyze` function in [`app.py`, Main orchestration](app/app.py).
 
-Guidance hint: Show concrete prompt or retrieval decisions.
-Evidence hint: Include representative outputs or failure cases.
+  The full pipeline is orchestrated in the `analyze` function in [`app.py`, Main orchestration](app/app.py).
 
 ### 2C. Computer Vision
 
@@ -212,60 +209,97 @@ List every usage of a data source as a separate entry. If the same source is use
 
 | Entry | Source name or link | Type | Size | Role in this block |
 | --- | --- | --- | --- | --- |
-| 1 |  |  |  |  |
-| 2 |  |  |  |  |
-| 3 |  |  |  |  |
+| 1 | [Car Damage Severity Dataset (Kaggle, prajwalbhamere)](https://www.kaggle.com/datasets/prajwalbhamere/car-damage-severity-dataset) | Image (JPEG) | ~1,631 images in 3 classes (1,383 train / 124 validation / 124 test) | Training, validation, and test data for the damage-severity classifier |
 
 #### 2C.2 Preprocessing and Augmentation
-- Image preprocessing:
-- Augmentation strategy:
+
+- Image preprocessing: Images are converted to RGB, resized to 224×224, and normalised using the mean and standard deviation of the pretrained ViT image processor (`google/vit-base-patch16-224`). Validation and test images use a deterministic resize and centre-crop with the same normalisation (no augmentation), so evaluation reflects clean inputs. See *Image processor + augmentation* in [`03_cv_damage_model.ipynb`](notebooks/03_cv_damage_model.ipynb).
+- Augmentation strategy: Applied to the training set only, and kept "damage-safe" so that the visual damage cues are preserved. The transforms are a mild random resized crop (scale 0.85–1.0), a horizontal flip (a dent is still a dent when mirrored), and mild colour jitter (brightness/contrast ±0.2). Aggressive rotations and strong colour distortions were deliberately avoided, as they could hide or fabricate damage signals.
+See *Image processor + augmentation* in [`03_cv_damage_model.ipynb`](notebooks/03_cv_damage_model.ipynb).
 
 #### 2C.3 Model Selection
-- Vision model(s) used:
-- Why these model(s) were chosen:
+
+- Vision model(s) used: A Vision Transformer (ViT), `google/vit-base-patch16-224`, fine-tuned with transfer learning. The pretrained backbone was frozen and only a new 3-class classifier head was trained (2,307 trainable parameters out of ~85.8M).
+- Why these model(s) were chosen: Transfer learning with a pretrained ViT is well suited to a small dataset (~1,631 images): the backbone already encodes general visual features, so only a small classifier head needs to learn the damage-severity task. Freezing the backbone keeps training fast and reduces the risk of overfitting on limited data. ViT was chosen for its strong image-classification performance and straightforward fine-tuning workflow. See *Load the ViT and freeze the backbone* in [`03_cv_damage_model.ipynb`](notebooks/03_cv_damage_model.ipynb).
 
 #### 2C.4 Model Comparison and Iterations
+
 | Iteration | Objective | Key changes | Model(s) used | Main metric | Change vs previous |
 | --- | --- | --- | --- | --- | --- |
-| 1 |  |  |  |  |  |
-| 2 |  |  |  |  |  |
-| 3 |  |  |  |  |  |
+| 1 | Fine-tune a damage-severity classifier on a small dataset | Transfer learning: frozen ViT backbone, new 3-class head; damage-safe augmentation; 8 epochs; best epoch selected by macro-F1 | ViT (`google/vit-base-patch16-224`) | Validation accuracy 0.734, macro-F1 0.720 (best epoch); test accuracy 0.685, macro-F1 0.682 | — (single configuration) |
+
+Note: A single model configuration was used for this block. Validation accuracy/F1 improved over the first epochs (≈0.67 → ≈0.73) and then plateaued, indicating convergence; the best epoch by macro-F1 was retained. A zero-shot baseline (e.g. CLIP) was considered as a comparison but not implemented, to keep block focused.
+See the training and evaluation cells in [`03_cv_damage_model.ipynb`](notebooks/03_cv_damage_model.ipynb).
 
 #### 2C.5 Evaluation and Error Analysis
-- Metrics and/or visual checks:
-- Final results:
+
+- Metrics and/or visual checks: Accuracy and macro-averaged precision, recall, and F1 (macro so each class counts equally), plus a confusion matrix and a per-class report on the held-out test set (124 images, evaluated once). Macro-averaging was chosen so the model cannot look good by only handling the easiest class well.
+- Final results: Accuracy 0.685, macro-F1 0.682. Per-class F1: minor 0.744, moderate 0.525, severe 0.778. Severe damage was detected most reliably (recall 0.81) and minor reasonably well (0.74); the middle "moderate" class was the weakest (F1 0.525).
 - Error patterns and limitations:
+  - The "moderate" class is the hardest, confused in both directions (toward minor and toward severe) — expected, since "moderate" is the fuzzy middle of a subjective severity scale where even human labels disagree.
+  - Errors are almost entirely between adjacent severity levels: in the confusion matrix only 1 image was misclassified minor→severe and 0 severe→minor. The model rarely makes a two-step ("catastrophic") error, indicating it has learned the underlying ordering of severity and mainly blurs the boundaries between neighbouring classes.
+  - Limitation - class scope: the dataset contains only damaged cars (no "undamaged/good" class), so the model always assigns one of the three damage levels. A clean car is forced into the closest category (typically "minor"). This is surfaced honestly in the app, and predictions are shown with a confidence value so low-confidence outputs are visibly uncertain.
+
+  See the evaluation and confusion-matrix cells in [`03_cv_damage_model.ipynb`](notebooks/03_cv_damage_model.ipynb).
 
 #### 2C.6 Integration with Other Block(s)
-- Inputs received from other block(s):
-- Outputs provided to other block(s):
 
-Guidance hint: Use concise examples from real predictions.
-Evidence hint: Include sample outputs and observed failure cases.
+- Inputs received from other block(s): None directly. The Computer Vision block takes the user's uploaded photo (an optional runtime input). It operates independently of the other blocks' outputs.
+- Outputs provided to other block(s): A damage-severity label (minor / moderate / severe) plus a confidence value. This output drives a rule-based price adjustment (decision logic) applied to the ML block's base price — minor −7%, moderate −20%, severe −40% — and is also passed to the NLP block, which mentions the damage and its effect in the explanation. If no photo is provided, no adjustment is applied.
+- Concrete example (real prediction): for a base price of €25,282 with an uploaded damage photo classified as "minor" (confidence 46%), the adjustment of −7% produced an adjusted estimate of €23,513, and the explanation noted the minor-damage adjustment.
+- Observed failure case: the same photo was a genuinely severe-damage example that the model classified as "minor" with low confidence (46%) — consistent with the model's ~68% accuracy and the inherent difficulty of severity boundaries. Because the predicted confidence is shown to the user, such low-confidence outputs are visibly uncertain, and the modest minor-damage adjustment limits the impact of an occasional misclassification on the final estimate.
+
+The adjustment logic is implemented in the `apply_damage_adjustment` function and orchestrated in `analyze` in [`app.py`](app/app.py).
 
 ---
 
 ## 3. Deployment
 
-- Deployment URL:
-- Main user flow:
+- Deployment URL: <https://huggingface.co/spaces/hussesey/zhaw-aiapp-used-car-assistant>
+- Main user flow: The user pastes a free-text car listing, selects a buyer persona (first-time / budget / non-native speaker), and optionally uploads a photo of visible damage. On clicking **Analyze**, the app extracts the specifications (NLP), predicts a base fair price (ML), classifies damage severity from the photo and applies a rule-based price adjustment (CV + decision logic), and returns a plain-language, RAG-grounded explanation. The interface displays the extracted specifications, the base price, the damage severity, the adjusted price, and the explanation.
 - Screenshot or short demo:
 
-Guidance hint: Deployment must be usable.
-Evidence hint: Add screenshots or short demo references.
+![App – analysis without a photo](screenshots/App_Screenshot.png)
+
+![App – analysis with a damage photo](screenshots/App_Screenshot1.png)
 
 ---
 
 ## 4. Execution Instructions
 
-- Environment setup:
-- Data setup:
-- Training command(s):
-- Inference/run command(s):
-- Reproducibility notes:
+- Environment setup: Clone the repository and install dependencies. The deployed app uses the dependencies in `app/requirements.txt`
 
-Guidance hint: Another person should be able to run your project from this section.
-Evidence hint: Include exact commands and versions.
+```bash
+git clone <https://github.com/husse786/zhaw-car-buyers-assistant>
+cd zhaw-car-buyers-assistant
+python -m venv .venv && source .venv/bin/activate
+pip install -r app/requirements.txt
+```
+
+Set the OpenAI credentials as environment variables (locally via a `.env` file in the project root; on Hugging Face via Space Secrets):
+
+```text
+LLM_API_KEY= <your-openai-api-key>
+LLM_MODEL=gpt-5.4-mini
+```
+
+- Data setup: Download the data sources (not committed to the repository): the AutoScout24 listings CSV (Kaggle) for the price model, the Car Damage Severity image dataset (Kaggle) for the vision model, and the `carknowledge.md` text file (included in `data/`). The trained price model (`models/price_model.pkl`) is produced by the ML notebook; the vision model is hosted on Hugging Face (`hussesey/zhaw-aiapp-vit-car-damage-severity`) and loaded at runtime.
+- Training command(s): Training is done offline in the notebooks (not in the app):
+  - `notebooks/01_eda_preprocessing.ipynb` — clean the AutoScout24 data and produce `data/autoscout_clean.csv`.
+  - `notebooks/02_ml_price_model.ipynb` — train and compare the price models; saves `models/price_model.pkl`.
+  - `notebooks/03_cv_damage_model.ipynb` — fine-tune the ViT damage classifier (run on a GPU, e.g. Lightning AI); the trained model is uploaded to Hugging Face.
+  - `notebooks/04_nlp_rag.ipynb` — develop and test the extraction, explanation, and RAG logic.
+- Inference/run command(s): Run the app locally from the `app/` folder:
+
+```bash
+cd app
+python app.py
+
+```
+
+This launches the Gradio interface locally. The deployed version runs the same `app.py` on Hugging Face Spaces.
+
+- Reproducibility notes: All splits use a fixed seed (`random_state=42`). Encoders and statistics are fit on the training split only. The app loads only pre-trained artifacts (the saved price model and the hosted vision model). No training happens at inference time, keeping training and inference cleanly separated.
 
 ---
 
@@ -273,11 +307,21 @@ Evidence hint: Include exact commands and versions.
 
 Use this section for exceptional work beyond the core requirements.
 
-- [ ] Third selected block implemented with strong quality
-- [ ] More than two data sources used with clear added value
+- [x] Third selected block implemented with strong quality
+- [x] More than two data sources used with clear added value
 - [ ] A core section is done exceptionally well
-- [ ] Extended evaluation
-- [ ] Ethics, bias, or fairness analysis
-- [ ] Creative or exceptional use case
+- [x] Extended evaluation
+- [x] Ethics, bias, or fairness analysis
+- [x] Creative or exceptional use case
 
 Evidence for selected bonus items:
+
+- Third block (Computer Vision): A full third block beyond the two required. A ViT damage-severity classifier was fine-tuned via transfer learning, evaluated on a held-out test set (accuracy 0.685, macro-F1 0.682), and integrated into the system through a rule-based price adjustment. Documented in §2C.
+
+- More than two data sources with clear added value: Three genuinely different data types power the three blocks - tabular listings (price model), images (damage classifier), and a text knowledge base (RAG explanation). Each source serves a distinct, necessary role.
+
+- Extended evaluation: Beyond headline metrics, the project includes per-segment error analysis for the price model (error by price band, car age, and fuel type), a confusion-matrix-based analysis for the vision model showing that errors are confined to adjacent severity levels, and a qualitative prompt-only vs. RAG-grounded comparison for the NLP block.
+
+- Ethics, bias, and fairness: The application presents estimates as guideline values, not binding valuations, and displays model confidence so uncertain predictions are visible. Honest limitations are surfaced throughout: the vision model is trained only on damaged cars (no "undamaged" class), the price model is trained on European listings (so other markets may differ), and the damage-to-price adjustment is illustrative business logic rather than a market-calibrated figure. The persona feature aims to make explanations accessible across different buyer backgrounds (first-time, budget-conscious, non-native speakers), reducing the information asymmetry the project addresses.
+
+- Creative or exceptional use case: The project targets a real, relatable problem — helping non-expert buyers judge whether a used-car listing is fairly priced and understand what the specifications mean — by chaining three AI blocks (image → severity, text → specs → price, knowledge → explanation) into one decision-support tool.
