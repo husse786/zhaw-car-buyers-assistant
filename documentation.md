@@ -46,12 +46,12 @@ Reference to multiple lines in `train.py`, lines 15-38:
 
 Primary blocks used for core solution (choose 2):
 
-- Primary block 1: ML Numeric Data — predicts a fair used-car price from specifications.
-- Primary block 2: NLP — extracts specs from a free-text listing and explains the price in plain, persona-adapted language (RAG-grounded).
+- Primary block 1: ML Numeric Data, predicts a fair used-car price from specifications.
+- Primary block 2: NLP, extracts specs from a free-text listing and explains the price in plain, persona-adapted language (RAG grounded).
 
 If a third block is selected, it is documented and graded separately as extra work.
 
-- Third block :Computer Vision — classifies visible damage severity, which adjusts the price estimate.
+- Third block :Computer Vision, classifies visible damage severity, which adjusts the price estimate.
 
 Guidance hint: Keep the project idea short and consistent. Focus most details on the selected blocks.
 Evidence hint: Show where each selected block contributes to the final system.
@@ -157,17 +157,17 @@ List every usage of a data source as a separate entry. If the same source is use
 
 #### 2B.2 Preprocessing and Prompt Design
 
-- Text preprocessing: The knowledge base is split into concept-level chunks by section heading, so each chunk is one self-contained topic (e.g. mileage, vehicle history report, frame damage), producing 11 chunks. Each chunk is embedded once with the OpenAI `text-embedding-3-small` model (1536-dimensional vectors) and stored in memory at startup. At query time, a query is embedded and the most relevant chunks are retrieved by cosine similarity (top-k = 3). See *Stage C — RAG* in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-c-rag).
+- Text preprocessing: The knowledge base is split into concept-level chunks by section heading, so each chunk is one self-contained topic (e.g. mileage, vehicle history report, frame damage), producing 11 chunks. Each chunk is embedded once with the OpenAI `text-embedding-3-small` model (1536-dimensional vectors) and stored in memory at startup. At query time, a query is embedded and the most relevant chunks are retrieved by cosine similarity (top-k = 3). See *Stage C — RAG* in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-c--grounded-explanation-with-retrieval-augmented-generation-ra).
 
 - Prompt design or retrieval setup: Two LLM prompts are used.
   - Extraction prompt (`temperature = 0` for consistency): a system instruction asks for strict JSON with a fixed set of keys, requires numeric values for numeric fields, constrains categorical fields (fuel, transmission, body type) to the exact vocabulary the price model was trained on, and returns `null` for values not stated rather than guessing. One worked example is included to anchor the format.
   - Explanation prompt (`temperature = 0.3`): a system instruction adapts the answer to a chosen buyer persona (first-time / budget-conscious / non-native speaker), explains the specifications and the predicted price in plain language, weaves in the retrieved knowledge-base context for grounding, and requires exactly one uncertainty note. It is instructed not to recompute the price.
-  See *Stage A: Extract* and *Stage B: Explain* in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-a-extract).
+  See *Stage A: Extract* and *Stage B: Explain* in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-a--extract-car-specs-from-free-text-llm).
 
 #### 2B.3 Approach Selection
 
 - Approach used (classical NLP, transformer, RAG, prompt engineering): A combination of prompt engineering and retrieval-augmented generation (RAG). Prompt engineering drives two LLM calls: structured spec extraction (strict JSON, constrained vocabulary) and a persona-adapted explanation. RAG augments the explanation by retrieving relevant chunks from the curated knowledge base and injecting them into the prompt, so advice is grounded in verified car-buying facts rather than the model's internal knowledge alone.
-- Alternatives considered: A prompt-only explanation (no retrieval) was implemented first and kept as the comparison baseline; RAG was then layered on top to reduce vague or unsupported claims. A fully local stack (open-source LLM with a vector database such as FAISS) was considered but not chosen: OpenAI embeddings with in-memory cosine similarity were sufficient for a small knowledge base (11 chunks) and kept the deployment lightweight. See *Stage C — RAG* and the prompt-only vs. RAG comparison in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-c-evaluation).
+- Alternatives considered: A prompt-only explanation (no retrieval) was implemented first and kept as the comparison baseline; RAG was then layered on top to reduce vague or unsupported claims. A fully local stack (open-source LLM with a vector database such as FAISS) was considered but not chosen: OpenAI embeddings with in-memory cosine similarity were sufficient for a small knowledge base (11 chunks) and kept the deployment lightweight. See *Stage C — RAG* and the prompt-only vs. RAG comparison in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-c-evaluation--prompt-only-vs-rag-grounded-explanation).
 
 #### 2B.4 Comparison and Iterations
 
@@ -177,7 +177,7 @@ List every usage of a data source as a separate entry. If the same source is use
 | 2 | Prevent encoding mismatch | Constrained categorical outputs to the price model's exact training vocabulary; `null` for unstated values | Same call with an updated system prompt | Categorical values now standardised (e.g. "petrol" → "Gasoline"); unstated fields correctly returned as `null` | Eliminated silent feature-mismatch at the ML interface |
 | 3 | Ground the explanation in verified facts | Added RAG: retrieve top-3 knowledge chunks and inject into the explanation prompt | Explanation prompt + retrieval (cosine similarity) | Qualitative: RAG version referenced verified concepts (pre-purchase inspection, history check, mileage wear) absent from the prompt-only version | More grounded, source-backed advice vs. prompt-only |
 
-See the prompt-only vs. RAG comparison in *Stage C — Evaluation* in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-c-evaluation).
+See the prompt-only vs. RAG comparison in *Stage C — Evaluation* in [`04_nlp_rag.ipynb`](notebooks/04_nlp_rag.ipynb#stage-c-evaluation--prompt-only-vs-rag-grounded-explanation).
 
 #### 2B.5 Evaluation and Error Analysis
 
