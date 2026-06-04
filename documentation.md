@@ -28,7 +28,7 @@ Reference to multiple lines in `train.py`, lines 15-38:
 - Project title: Used-Car Buyer's Assistant
 - Student: Seyid Hussein Husseini
 - GitHub repository URL: <https://github.com/husse786/zhaw-car-buyers-assistant>
-- Deployment URL: <https://zhaw-car-buyers-assistant.streamlit.app>
+- Deployment URL: <https://huggingface.co/spaces/hussesey/zhaw-aiapp-used-car-assistant>
 - Submission date: 05.06.2026
 
 ### Mandatory Setup Checks
